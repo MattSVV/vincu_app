@@ -23,3 +23,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/universitario_Japon-EscudoNombreVertical.png
+    - assets/universitario_Japon-EscudoNombreHorizontalRelleno.png
+    - assets/universitario_Japon-EscudoNombreHorizontal.png
+    - assets/universitario_Japon-EscudoNombre.png
+    - .env

@@ -1,5 +1,5 @@
 import 'package:hive/hive.dart';
-import 'package:path_provider/path_provider.dart';
+
 
 class DBHive {
   static final DBHive _instance = DBHive._internal();
@@ -10,8 +10,6 @@ class DBHive {
 
   Future<bool> initDB(String nombreBox) async {
     if (!Hive.isBoxOpen(nombreBox)) {
-      final directorio = await getApplicationSupportDirectory();
-      Hive.init(directorio.path);
       box = await Hive.openBox(nombreBox);
     } else {
       box = Hive.box(nombreBox);
