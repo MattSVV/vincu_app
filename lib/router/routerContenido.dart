@@ -14,7 +14,9 @@ class RouterContenido {
   RouterPantalla rtPantalla = RouterPantalla();
 
   Future<List<Contenido>> listaContenido() async {
-    final url = Uri.parse('https://api-vinculacion-0309.onrender.com/api/contenido');
+    final url = Uri.parse(
+      'https://api-vinculacion-0309.onrender.com/api/contenido',
+    );
     final response = await http.get(
       url,
       headers: {'x-api-key': dotenv.env['API_KEY']!},
@@ -29,8 +31,8 @@ class RouterContenido {
       contenidos =
           data.map((json) {
             // Obtener los ID del JSON
-            int idPantalla = json['id_Pantalla'];
-            int idDepartamento = json['id_Departamento'];
+            int idPantalla = json['id_pantalla'];
+            int idDepartamento = json['id_departamento'];
 
             // Buscar los objetos completos
             Pantalla? pantalla = pantallas.firstWhere(
@@ -42,13 +44,13 @@ class RouterContenido {
               (d) => d.idDepartamento == idDepartamento,
               orElse: () => Departamento.defaultDepartamento(),
             );
-
+            
             // Crear objeto Contenido manualmente
             return Contenido(
-              json['id_Contenido'],
-              json['titulo_Contenido'],
-              json['Subtitulo_Contenido'],
-              json['descripcion_Contenido'],
+              json['id_contenido'],
+              json['titulo_contenido'],
+              json['subtitulo_contenido'] ?? '',
+              json['descripcion_contenido'],
               departamento,
               pantalla,
             );
@@ -57,5 +59,21 @@ class RouterContenido {
       print("Error: ${response.statusCode}");
     }
     return contenidos;
+  }
+
+  Future<void> guardarContenido(Contenido contenido) async {
+    final url = Uri.parse(
+      'https://api-vinculacion-0309.onrender.com/api/contenido',
+    );
+    await http.post(
+      url,
+      headers: {
+        'x-api-key': dotenv.env['API_KEY']!,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(contenido.toJson()),
+    );
+
+    
   }
 }

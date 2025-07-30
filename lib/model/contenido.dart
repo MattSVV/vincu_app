@@ -28,6 +28,17 @@ class Contenido {
     this.pantalla,
   );
 
+  Object? toJson() {
+    return {
+      'id_contenido': idContenido,
+      'titulo_contenido': tituloContenido,
+      'subtitulo_contenido': subtituloContenido,
+      'descripcion_contenido': descripcionContenido,
+      'id_departamento': departamento.idDepartamento,
+      'id_pantalla': pantalla.idPantalla,
+    };
+  }
+
   
   
 }

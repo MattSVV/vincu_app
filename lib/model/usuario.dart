@@ -19,9 +19,9 @@ class Usuario {
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
     return Usuario(
-      idUsuario: json['id_Usuario'],
-      cedulaUsuario: json['cedula_Usuario'],
-      contraUsuario: json['contra_Usuario'],
+      idUsuario: json['id_usuario'],
+      cedulaUsuario: json['cedula_usuario'],
+      contraUsuario: json['contra_usuario'],
     );
   }
 }

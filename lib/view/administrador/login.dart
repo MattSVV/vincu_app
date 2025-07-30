@@ -17,46 +17,51 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
   List<Usuario> listaUsuarios = [];
   bool isLoading = false;
+  bool _mostrarPassword = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarUsuarios();
   }
 
-  Future<void> _cargarUsuarios() async {
+  void _validarCredenciales() async {
+  final cedula = cedulaController.text.trim();
+  final password = passwordController.text;
+
+  if (cedula.isEmpty || password.isEmpty) {
+    _mostrarMensaje('Por favor ingrese la cédula y la contraseña');
+    return;
+  }
+
+  setState(() => isLoading = true);
+
+  try {
     final control = Controladora();
-    final usuarios = await control.cargarUsuarios();
-    setState(() {
-      listaUsuarios = usuarios;
-    });
-  }
+    listaUsuarios = await control.cargarUsuarios();
 
-  void _validarCredenciales() {
-    final cedula = cedulaController.text.trim();
-    final password = passwordController.text;
-
-    if (cedula.isEmpty || password.isEmpty) {
-      _mostrarMensaje('Por favor ingrese la cédula y la contraseña');
-      return;
-    }
-
-    final usuarioValido = listaUsuarios.any((usuario) =>
-        usuario.cedulaUsuario == cedula &&
-        usuario.contraUsuario == password);
+    final usuarioValido = listaUsuarios.any(
+      (usuario) =>
+          usuario.cedulaUsuario == cedula &&
+          usuario.contraUsuario == password,
+    );
 
     if (usuarioValido) {
-      // Navigator.pushNamed(context, '/admin-dashboard');
-      _mostrarMensaje('Usuario coincide entre a la aplicacion');
+      Navigator.pushReplacementNamed(context, '/admin-home');
     } else {
       _mostrarMensaje('La cédula o contraseña no coinciden');
     }
+  } catch (e) {
+    _mostrarMensaje('Ocurrió un error: $e');
+  } finally {
+    setState(() => isLoading = false);
   }
+}
 
   void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(mensaje),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   @override
@@ -95,6 +100,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 SizedBox(height: screenHeight * 0.025),
                 TextField(
                   controller: passwordController,
+                  obscureText: !_mostrarPassword,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     labelStyle: TextStyle(color: colorPurple),
@@ -103,11 +109,24 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _mostrarPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: colorPurple,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _mostrarPassword = !_mostrarPassword;
+                        });
+                      },
+                    ),
                   ),
-                  obscureText: true,
                 ),
                 SizedBox(height: screenHeight * 0.06),
-                CustomButton(
+                isLoading ? const CircularProgressIndicator()
+                          : CustomButton(
                   text: 'Iniciar sesión',
                   color: colorPurple,
                   onPressed: _validarCredenciales,

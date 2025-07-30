@@ -14,8 +14,8 @@ class Pantalla {
 
   factory Pantalla.fromJson(Map<String, dynamic> json) {
     return Pantalla(
-      idPantalla: json['id_Pantalla'],
-      nombrePantalla: json['nombre_Pantalla'],
+      idPantalla: json['id_pantalla'],
+      nombrePantalla: json['nombre_pantalla'],
     );
   }
 

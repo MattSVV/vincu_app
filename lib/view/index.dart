@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vincu_app/controller/controladora.dart';
 import '../widgets/custom_button.dart'; // Importa el botón personalizado
 
 class IndexPage extends StatelessWidget {
@@ -10,6 +11,14 @@ class IndexPage extends StatelessWidget {
     final Color colorYellow = const Color(0xFFF2C800);
     final double screenHeight = MediaQuery.of(context).size.height;
     final double screenWidth = MediaQuery.of(context).size.width;
+    final Controladora control = Controladora();
+
+    void _mostrarMensaje(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(mensaje),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -30,7 +39,7 @@ class IndexPage extends StatelessWidget {
                   text: 'Usuario',
                   color: colorPurple,
                   onPressed: () {
-                    Navigator.pushNamed(context, '/usuario');
+                    Navigator.pushNamed(context, '/homeUsuario');
                   },
                 ),
                 SizedBox(height: screenHeight * 0.025),
@@ -38,8 +47,13 @@ class IndexPage extends StatelessWidget {
                   text: 'Administrador',
                   color: colorYellow,
                   textColor: Colors.black,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/loginAdministrador');
+                  onPressed: () async {
+                    bool hasInternet = await control.verificarConexionInternet();
+                    if(hasInternet) {
+                      Navigator.pushNamed(context, '/loginAdministrador');
+                    } else {
+                      _mostrarMensaje('No hay conexión a Internet');
+                    }
                   },
                 ),
               ],
@@ -50,3 +64,4 @@ class IndexPage extends StatelessWidget {
     );
   }
 }
+
