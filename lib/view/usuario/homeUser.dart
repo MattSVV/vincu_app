@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vincu_app/controller/controladora.dart';
 import 'package:vincu_app/model/contenido.dart';
+import 'package:vincu_app/model/departamento.dart';
 import 'package:vincu_app/widgets/ContenidoCard.dart';
 
 class HomeUser extends StatefulWidget {
@@ -11,7 +12,7 @@ class HomeUser extends StatefulWidget {
 }
 
 class _HomeUserState extends State<HomeUser>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   List<Contenido> listaContenido = [];
   List<String> _tabs = [];
   List<String> _departamentos = [];
@@ -70,6 +71,23 @@ class _HomeUserState extends State<HomeUser>
     _tabController = TabController(length: _tabs.length, vsync: this);
   }
 
+  Future<void> _reloadData() async {
+    setState(() => _cargando = true);
+    final departamentosUnicos = await control.cargarDepartamentos();
+    
+    Departamento? departamentoSeleccionado = departamentosUnicos.firstWhere(
+      (d) => d.nombreDepartamento == _departamentoSeleccionado,
+      orElse: () => Departamento.defaultDepartamento(),
+    );
+
+    final contenidoPorDepartamento = await control.cargarContenidosPorDepartamento(departamentoSeleccionado.idDepartamento);
+
+    setState(() {
+      listaContenido = contenidoPorDepartamento;
+      _cargando = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,7 +101,7 @@ class _HomeUserState extends State<HomeUser>
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
-            onPressed: _cargarInicial,
+            onPressed: _reloadData,
             tooltip: 'Recargar Contenido',
           ),
         ],
@@ -134,11 +152,12 @@ class _HomeUserState extends State<HomeUser>
                 ),
                 selected: dep == _departamentoSeleccionado,
                 selectedTileColor: morado.withAlpha((0.2 * 255).round()),
-                onTap: () {
+                onTap: () async {
                   setState(() {
                     _departamentoSeleccionado = dep;
                   });
                   Navigator.pop(context); // cerrar drawer
+                  await _reloadData();
                 },
               ),
             ),
@@ -184,18 +203,16 @@ class _HomeUserState extends State<HomeUser>
             .toList();
 
     if (contenidosFiltrados.isEmpty) {
-      return Expanded(
-            child: Center(
-              child: Text(
-                'No hay contenido para esta pantalla',
-                style: TextStyle(
-                  fontFamily: fuenteCuerpo,
-                  fontSize: 16,
-                  color: morado,
-                ),
-              ),
-            ),
-          );
+      return Center(
+    child: Text(
+      'No hay contenido para esta pantalla',
+      style: TextStyle(
+        fontFamily: fuenteCuerpo,
+        fontSize: 16,
+        color: morado,
+      ),
+    ),
+  );
     }
     return ListView.builder(
       itemCount: contenidosFiltrados.length,

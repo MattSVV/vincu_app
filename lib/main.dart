@@ -5,6 +5,8 @@ import 'package:vincu_app/model/departamento.dart';
 import 'package:vincu_app/model/pantalla.dart';
 import 'package:vincu_app/model/contenido.dart';
 import 'package:vincu_app/model/usuario.dart';
+import 'package:vincu_app/view/administrador/CreateAndUpdate/actualizarContenido.dart';
+import 'package:vincu_app/view/administrador/CreateAndUpdate/createContent.dart';
 import 'package:vincu_app/view/administrador/home.dart';
 import 'package:vincu_app/view/administrador/login.dart';
 import 'package:vincu_app/view/index.dart';
@@ -16,7 +18,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final directory = await getApplicationSupportDirectory();
   Hive.init(directory.path);
-  print("mirame aqui estoy");
   Hive.registerAdapter(ContenidoAdapter());
   Hive.registerAdapter(DepartamentoAdapter());
   Hive.registerAdapter(PantallaAdapter());
@@ -34,15 +35,42 @@ class MainApp extends StatelessWidget {
       title: 'Vinculación Japón',
       initialRoute: '/',
       routes: {
-        '/': (context) => const IndexPage(), 
+        '/': (context) => const IndexPage(),
         //rutas admministrador
         '/loginAdministrador': (context) => const AdminLoginPage(),
-        '/admin-home' : (context) => const HomeAdmin(),
-
+        '/admin-home': (context) => const HomeAdmin(),
+        
         //rutas usuarios
         '/homeUsuario': (context) => const HomeUser(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/crearContenido') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder:
+                (context) => CrearContenido(
+                  pantallaSeleccionada: args['pantalla'],
+                  departamentoSeleccionado: args['departamento'],
+                ),
+          );
+        }
+        ;
+        if (settings.name == '/actualizarContenido') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder:
+                (context) => ActualizarContenido(
+                  idContenido: args['id'],
+                  tituloContenido: args['titulo'],
+                  subtituloContenido: args['subtitulo'],
+                  descripcionContenido: args['descripcion'],
+                  pantallaSeleccionada: args['pantalla'],
+                  departamentoSeleccionado: args['departamento']
+                ),
+          );
+        }
+        return null;
       },
     );
   }
 }
-

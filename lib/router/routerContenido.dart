@@ -65,6 +65,7 @@ class RouterContenido {
     final url = Uri.parse(
       'https://api-vinculacion-0309.onrender.com/api/contenido',
     );
+    print(contenido.toJson());
     await http.post(
       url,
       headers: {
@@ -75,5 +76,80 @@ class RouterContenido {
     );
 
     
+  }
+
+  Future<void> actualizarContenido(Contenido contenido) async {
+    final url = Uri.parse(
+      'https://api-vinculacion-0309.onrender.com/api/contenido/${contenido.idContenido}',
+    );
+    await http.put(
+      url,
+      headers: {
+        'x-api-key': dotenv.env['API_KEY']!,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(contenido.toJson()),
+    );
+  }
+
+  Future<void> eliminarContenido(int idContenido) async {
+    final url = Uri.parse(
+      'https://api-vinculacion-0309.onrender.com/api/contenido/$idContenido',
+    );
+    await http.delete(
+      url,
+      headers: {
+        'x-api-key': dotenv.env['API_KEY']!,
+      },
+    );
+    print("Contenido con ID $idContenido eliminado");
+  }
+
+  Future<List<Contenido>> cargarContenidosPorDepartamento(int idDepartamento) async {
+    final url = Uri.parse(
+      'https://api-vinculacion-0309.onrender.com/api/contenido/departamento/$idDepartamento',
+    );
+    final response = await http.get(
+      url,
+      headers: {'x-api-key': dotenv.env['API_KEY']!},
+    );
+    List<Contenido> contenidos = [];
+    List<Pantalla> pantallas = await rtPantalla.traerPantalla();
+    List<Departamento> departamentos = await rtDep.traerDepa();
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+
+      contenidos =
+          data.map((json) {
+            // Obtener los ID del JSON
+            int idPantalla = json['id_pantalla'];
+            int idDepartamento = json['id_departamento'];
+
+            // Buscar los objetos completos
+            Pantalla? pantalla = pantallas.firstWhere(
+              (p) => p.idPantalla == idPantalla,
+              orElse: () => Pantalla.defaultPantalla(),
+            );
+
+            Departamento? departamento = departamentos.firstWhere(
+              (d) => d.idDepartamento == idDepartamento,
+              orElse: () => Departamento.defaultDepartamento(),
+            );
+            
+            // Crear objeto Contenido manualmente
+            return Contenido(
+              json['id_contenido'],
+              json['titulo_contenido'],
+              json['subtitulo_contenido'] ?? '',
+              json['descripcion_contenido'],
+              departamento,
+              pantalla,
+            );
+          }).toList();
+    } else {
+      print("Error: ${response.statusCode}");
+    }
+    return contenidos;
   }
 }

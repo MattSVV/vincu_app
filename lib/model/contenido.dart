@@ -25,7 +25,7 @@ class Contenido {
     this.subtituloContenido,
     this.descripcionContenido,
     this.departamento,
-    this.pantalla,
+    this.pantalla, 
   );
 
   Object? toJson() {
@@ -34,11 +34,20 @@ class Contenido {
       'titulo_contenido': tituloContenido,
       'subtitulo_contenido': subtituloContenido,
       'descripcion_contenido': descripcionContenido,
-      'id_departamento': departamento.idDepartamento,
       'id_pantalla': pantalla.idPantalla,
+      'id_departamento': departamento.idDepartamento,
     };
   }
 
-  
-  
+  factory Contenido.defaultContenido() {
+    return Contenido(
+      0,
+      '',
+      '',
+      '',
+      Departamento.defaultDepartamento(),
+      Pantalla.defaultPantalla(),
+    );
+  }
+
 }

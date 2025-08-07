@@ -5,7 +5,7 @@ import 'package:vincu_app/model/usuario.dart';
 
 class RouterUsuario {
   final String _urlApi =
-      'https://api-vinculacion-0309.onrender.com/api/usuarios/';
+      'https://api-vinculacion-0309.onrender.com/api/usuario/';
 
   Future<List<Usuario>> leerUsuario() async {
     final uri = Uri.parse(_urlApi);

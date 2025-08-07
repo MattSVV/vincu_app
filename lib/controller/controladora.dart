@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 
 import 'package:vincu_app/db/database.dart';
 import 'package:vincu_app/model/contenido.dart';
@@ -138,13 +139,44 @@ class Controladora {
 
   //Controladores del Crud
 
-  Future<String> guardarContenido(Contenido contenido) async {
+  Future<String> guardarContenido(
+    String titulo,
+    String subtitulo,
+    String descripcion,
+    String pantalla,
+    String departamento,
+  ) async {
     try {
-      if (contenido.tituloContenido.isEmpty ||
-          contenido.descripcionContenido.isEmpty) {
+      if (titulo.isEmpty ||
+          descripcion.isEmpty ||
+          pantalla.isEmpty ||
+          departamento.isEmpty) {
         print("Contenido vacío, no se guardará.");
         return "Contenido vacío";
       }
+
+      List<Pantalla> pantallas = await cargarPantallas();
+      List<Departamento> departamentos = await cargarDepartamentos();
+
+      Pantalla pantallaObj = pantallas.firstWhere(
+        (p) => p.nombrePantalla == pantalla,
+        orElse: () => Pantalla.defaultPantalla(),
+      );
+
+      Departamento departamentoObj = departamentos.firstWhere(
+        (d) => d.nombreDepartamento == departamento,
+        orElse: () => Departamento.defaultDepartamento(),
+      );
+
+      Contenido contenido = Contenido(
+        0,
+        titulo,
+        subtitulo,
+        descripcion,
+        departamentoObj,
+        pantallaObj,
+      );
+
       await rtCont.guardarContenido(contenido);
       return "Contenido guardado";
     } catch (e) {
@@ -153,13 +185,155 @@ class Controladora {
     }
   }
 
-  //Funcion general
+  Future<String> actualizarContenido(
+    int idContenido,
+    String titulo,
+    String subtitulo,
+    String descripcion,
+    String pantallaSeleccionada,
+    String departamentoSeleccionado,
+  ) async {
+    try {
+      if (titulo.isEmpty || descripcion.isEmpty) {
+        print("Contenido vacío, no se actualizará.");
+        return "Contenido vacío";
+      }
+
+      List<Pantalla> pantallas = await cargarPantallas();
+      List<Departamento> departamentos = await cargarDepartamentos();
+
+      Pantalla pantallaObj = pantallas.firstWhere(
+        (p) => p.nombrePantalla == pantallaSeleccionada,
+        orElse: () => Pantalla.defaultPantalla(),
+      );
+
+      Departamento departamentoObj = departamentos.firstWhere(
+        (d) => d.nombreDepartamento == departamentoSeleccionado,
+        orElse: () => Departamento.defaultDepartamento(),
+      );
+
+      Contenido contenido = Contenido(
+        idContenido,
+        titulo,
+        subtitulo,
+        descripcion,
+        departamentoObj,
+        pantallaObj,
+      );
+
+      await rtCont.actualizarContenido(contenido);
+      return "Contenido actualizado";
+    } catch (e) {
+      print("Error al actualizar contenido: $e");
+      return "Error al actualizar contenido";
+    }
+  }
+
+  Future<String> eliminarContenido(int idContenido) async {
+    final hive = DBHive();
+    await hive.initDB('contenidos');
+    try {
+      if (idContenido <= 0) {
+        return 'ID de contenido inválido';
+      }
+      final localData = hive.readData();
+      final contenidos = localData.values.cast<Contenido>().toList();
+      if (contenidos.isNotEmpty) {
+        final contenido = contenidos.firstWhere(
+          (c) => c.idContenido == idContenido,
+          orElse: () => Contenido.defaultContenido(),
+        );
+        if (contenido != Contenido.defaultContenido()) {
+          await hive.deleteData(contenido.idContenido);
+        }
+      }
+      await rtCont.eliminarContenido(idContenido);
+      print("Contenido con ID $idContenido eliminado");
+      return 'Contenido Eliminado';
+    } catch (e) {
+      print("Error al eliminar contenido: $e");
+      return 'Error al eliminar contenido';
+    }
+  }
+
+  //Funciones generales
   Future<bool> verificarConexionInternet() async {
     try {
       final result = await InternetAddress.lookup('google.com');
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<void> mostrarMensaje(
+    String mensaje,
+    BuildContext context,
+    String uso,
+  ) async {
+    final error = Colors.red[700];
+    final success = Colors.green[700];
+    final info = Colors.blue[700];
+
+    switch (uso) {
+      case 'error':
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        break;
+      case 'success':
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        break;
+      case 'info':
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: info,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        break;
+    };
+
+    // Mostrar un SnackBar con el mensaje
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  Future<List<Contenido>> cargarContenidosPorDepartamento(
+    int idDepartamento,
+  ) async {
+    try {
+      final hasInternet = await verificarConexionInternet();
+      if (!hasInternet) {
+        print("Sin conexión a internet");
+        return [];
+      }
+
+      final contenidos = await rtCont.cargarContenidosPorDepartamento(
+        idDepartamento,
+      );
+      if (contenidos.isEmpty) {
+        print(
+          "No se encontraron contenidos para el departamento: $idDepartamento",
+        );
+      }
+
+      return contenidos;
+    } catch (e) {
+      print("Error al cargar contenidos por departamento: $e");
+      return [];
     }
   }
 }

@@ -14,6 +14,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final Color colorPurple = const Color(0xFF4B2384);
   final TextEditingController cedulaController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final control = Controladora();
 
   List<Usuario> listaUsuarios = [];
   bool isLoading = false;
@@ -29,14 +30,14 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final password = passwordController.text;
 
   if (cedula.isEmpty || password.isEmpty) {
-    _mostrarMensaje('Por favor ingrese la cédula y la contraseña');
+    control.mostrarMensaje('Por favor ingrese la cédula y la contraseña', context, 'error');
     return;
   }
 
   setState(() => isLoading = true);
 
   try {
-    final control = Controladora();
+    
     listaUsuarios = await control.cargarUsuarios();
 
     final usuarioValido = listaUsuarios.any(
@@ -48,104 +49,101 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     if (usuarioValido) {
       Navigator.pushReplacementNamed(context, '/admin-home');
     } else {
-      _mostrarMensaje('La cédula o contraseña no coinciden');
+      control.mostrarMensaje('La cédula o contraseña no coinciden', context, 'error');
     }
   } catch (e) {
-    _mostrarMensaje('Ocurrió un error: $e');
+      control.mostrarMensaje('Ocurrió un error: $e', context, 'error');
   } finally {
     setState(() => isLoading = false);
   }
 }
 
-  void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(mensaje),
-      behavior: SnackBarBehavior.floating,
-    ));
-  }
+  
 
   @override
-  Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
+Widget build(BuildContext context) {
+  final double screenHeight = MediaQuery.of(context).size.height;
+  final double screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/universitario_Japon-EscudoNombreHorizontalRelleno.png',
-                  width: screenWidth * 0.7,
-                  fit: BoxFit.contain,
-                ),
-                SizedBox(height: screenHeight * 0.06),
-                TextField(
-                  controller: cedulaController,
-                  decoration: InputDecoration(
-                    labelText: 'Número de Cédula',
-                    labelStyle: TextStyle(color: colorPurple),
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                SizedBox(height: screenHeight * 0.025),
-                TextField(
-                  controller: passwordController,
-                  obscureText: !_mostrarPassword,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    labelStyle: TextStyle(color: colorPurple),
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _mostrarPassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        color: colorPurple,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _mostrarPassword = !_mostrarPassword;
-                        });
-                      },
-                    ),
+  return Scaffold(
+    backgroundColor: Colors.white,
+    resizeToAvoidBottomInset: true, // IMPORTANTE para que el teclado no cause overflow
+    body: SafeArea(
+      child: SingleChildScrollView( // Scroll automático si el teclado aparece
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+          child: Column(
+            children: [
+              SizedBox(height: screenHeight * 0.06),
+              Image.asset(
+                'assets/universitario_Japon-EscudoNombreHorizontalRelleno.png',
+                width: screenWidth * 0.7,
+                fit: BoxFit.contain,
+              ),
+              SizedBox(height: screenHeight * 0.06),
+              TextField(
+                controller: cedulaController,
+                decoration: InputDecoration(
+                  labelText: 'Número de Cédula',
+                  labelStyle: TextStyle(color: colorPurple),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                SizedBox(height: screenHeight * 0.06),
-                isLoading ? const CircularProgressIndicator()
-                          : CustomButton(
-                  text: 'Iniciar sesión',
-                  color: colorPurple,
-                  onPressed: _validarCredenciales,
-                ),
-                SizedBox(height: screenHeight * 0.02),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Volver al inicio',
-                    style: TextStyle(color: colorPurple),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: screenHeight * 0.025),
+              TextField(
+                controller: passwordController,
+                obscureText: !_mostrarPassword,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  labelStyle: TextStyle(color: colorPurple),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _mostrarPassword ? Icons.visibility : Icons.visibility_off,
+                      color: colorPurple,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _mostrarPassword = !_mostrarPassword;
+                      });
+                    },
                   ),
                 ),
-              ],
-            ),
+              ),
+              SizedBox(height: screenHeight * 0.06),
+              isLoading
+                  ? const CircularProgressIndicator()
+                  : CustomButton(
+                      text: 'Iniciar sesión',
+                      color: colorPurple,
+                      onPressed: _validarCredenciales,
+                    ),
+              SizedBox(height: screenHeight * 0.02),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text(
+                  'Volver al inicio',
+                  style: TextStyle(color: colorPurple),
+                ),
+              ),
+              SizedBox(height: 20), // Espacio adicional al fondo
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }

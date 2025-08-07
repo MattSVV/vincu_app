@@ -21,7 +21,6 @@ Pantalla: Representa una de las tres secciones gráficas que puede tener un depa
 
 Usuario: Modelo pendiente de implementación. Permitirá a usuarios autorizados modificar la información, mientras que el acceso público será solo de lectura.
 
-🔔 Nota: El modelo Usuario y otros modelos adicionales serán incorporados en futuras actualizaciones según los requerimientos funcionales.
 
 💾 Persistencia Local (Hive)
 Se utiliza la base de datos Hive para persistencia de datos localmente.

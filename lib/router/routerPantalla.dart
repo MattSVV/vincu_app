@@ -8,7 +8,7 @@ class RouterPantalla {
   RouterPantalla();
 
   Future<List<Pantalla>> traerPantalla() async {
-    final uri = Uri.parse('https://api-vinculacion-0309.onrender.com/api/pantallas');
+    final uri = Uri.parse('https://api-vinculacion-0309.onrender.com/api/pantalla');
      final response = await http.get(
       uri,
       headers: {'x-api-key': dotenv.env['API_KEY']!},
