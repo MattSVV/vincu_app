@@ -28,7 +28,7 @@ import 'package:vincu_app/view/administrador/CreateAndUpdate/eliminarContenido.d
 import 'package:vincu_app/widgets/ContenidoCard.dart';
 import 'package:vincu_app/widgets/ContenidoEditable.dart';
 import 'package:vincu_app/model/departamento.dart';
-import 'package:vincu_app/model/pantalla.dart';
+
 
 class HomeAdmin extends StatefulWidget {
   const HomeAdmin({super.key});
@@ -47,7 +47,7 @@ class _HomeAdminState extends State<HomeAdmin> with TickerProviderStateMixin {
   final List<String> _modos = ['Vista', 'Editar'];
   bool _tabControllerInicializado = false;
   final control = Controladora();
-  late List<Departamento> _listaDepartamentos;
+  
 
   late TabController _tabController;
 
