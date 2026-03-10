@@ -125,10 +125,11 @@ class _ActualizarContenidoState extends State<ActualizarContenido> {
                       widget.departamentoSeleccionado,
                     );
 
-                    if (respuesta == "Contenido guardado") {
+                    if (respuesta == "Contenido actualizado") {
                       tituloController.clear();
                       subtituloController.clear();
                       descripcionController.clear();
+                      await control.mostrarMensaje(respuesta, context, 'success');
                       Navigator.pop(context);
                     } else {
                       await control.mostrarMensaje(respuesta, context, 'error');

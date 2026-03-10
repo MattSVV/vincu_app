@@ -12,6 +12,7 @@ import 'package:vincu_app/view/administrador/login.dart';
 import 'package:vincu_app/view/index.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vincu_app/view/usuario/homeUser.dart';
+import 'package:vincu_app/model/archivo.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
@@ -22,6 +23,7 @@ Future<void> main() async {
   Hive.registerAdapter(DepartamentoAdapter());
   Hive.registerAdapter(PantallaAdapter());
   Hive.registerAdapter(UsuarioAdapter());
+  Hive.registerAdapter(ArchivoAdapter());
 
   runApp(const MainApp());
 }

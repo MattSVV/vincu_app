@@ -114,6 +114,7 @@ class _CrearContenidoState extends State<CrearContenido> {
                         tituloController.clear();
                         subtituloController.clear();
                         descripcionController.clear();
+                        await control.mostrarMensaje(respuesta, context, 'success');
                         Navigator.pop(context);
                       } else {
                         await control.mostrarMensaje(respuesta, context, 'error');

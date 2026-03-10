@@ -1,143 +1,149 @@
+
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:vincu_app/db/database.dart';
+import 'package:vincu_app/model/archivo.dart';
 import 'package:vincu_app/model/contenido.dart';
 import 'package:vincu_app/model/departamento.dart';
 import 'package:vincu_app/model/pantalla.dart';
 import 'package:vincu_app/model/usuario.dart';
+
 import 'package:vincu_app/router/routerContenido.dart';
 import 'package:vincu_app/router/routerDepartamento.dart';
 import 'package:vincu_app/router/routerPantalla.dart';
 import 'package:vincu_app/router/routerUsuario.dart';
+import 'package:vincu_app/router/routerArchivo.dart';
+
 
 class Controladora {
-  RouterContenido rtCont = RouterContenido();
-  RouterUsuario rtUsu = RouterUsuario();
-  RouterDepartamento rtDep = RouterDepartamento();
-  RouterPantalla rtPant = RouterPantalla();
+  // Singleton
+  Controladora._internal();
+  static final Controladora _instance = Controladora._internal();
+  factory Controladora() => _instance;
 
-  //Datos del contenido de la aplicación
+  // Routers
+  final RouterContenido rtCont = RouterContenido();
+  final RouterUsuario rtUsu = RouterUsuario();
+  final RouterDepartamento rtDep = RouterDepartamento();
+  final RouterPantalla rtPant = RouterPantalla();
+  final RouterArchivo rtArchivo = RouterArchivo();
 
-  Future<List<Contenido>> cargarContenidos({
-    void Function(List<Contenido>)? onUpdate,
+  /* -------------------------------------------------------------
+  *  CENTRALIZADOR DE LECTURA HIVE
+  * ----------------------------------------------------------- */
+  Future<List<T>> cargarHive<T>(String boxName) async {
+    final hive = DBHive();
+    await hive.initDB(boxName);
+
+    final local = hive.readData();
+    final datos = local.values.cast<T>().toList();
+
+    hive.dispose();
+    return datos;
+  }
+
+  /* -------------------------------------------------------------
+  *  CENTRALIZADOR DE LÓGICA OFFLINE - ONLINE
+  * ----------------------------------------------------------- */
+  Future<List<T>> cargarDatos<T>(
+    String boxName,
+    Future<List<T>> Function() fetchRemote, {
+    void Function(List<T>)? onUpdate,
   }) async {
     final hive = DBHive();
+    await hive.initDB(boxName);
+
     try {
-      await hive.initDB('contenidos');
+      final localMap = hive.readData();
+      final local = localMap.values.cast<T>().toList();
 
-      // Paso 1: mostrar datos locales si existen
-      final localData = hive.readData();
-      if (localData.isNotEmpty) {
-        final listaLocal = localData.values.cast<Contenido>().toList();
+      final tieneInternet = await verificarConexionInternet();
 
-        // Notifica a la UI con los datos locales
-        if (onUpdate != null) {
-          onUpdate(listaLocal);
-        }
+      // Si hay datos locales, primero se devuelven
+      if (local.isNotEmpty) {
+        onUpdate?.call(local);
 
-        // Paso 2: intenta actualizar en segundo plano si hay internet
-        bool tieneInternet = await verificarConexionInternet();
         if (tieneInternet) {
-          final nuevosDatos = await rtCont.listaContenido();
-          await hive.box.clear();
-          for (var contenido in nuevosDatos) {
-            await hive.addData<Contenido>(contenido);
-          }
-
-          // Notifica actualización con datos nuevos
-          if (onUpdate != null) {
-            onUpdate(nuevosDatos);
-          }
+          try {
+    final remote = await fetchRemote();
+    
+    if (remote.isNotEmpty) {
+      await hive.box.clear(); 
+      for (var item in remote) {
+        await hive.addData(item);
+      }
+      onUpdate?.call(remote);
+      return remote;
+    }
+  } catch (e) {
+    debugPrint("Fallo fetch remoto, manteniendo locales");
+  }
         }
 
-        return listaLocal;
+        return local;
       }
 
-      // Si no hay datos locales, intenta cargar desde internet
-      bool tieneInternet = await verificarConexionInternet();
+      // Si no hay datos locales → intenta desde el servidor
       if (tieneInternet) {
-        final contenidos = await rtCont.listaContenido();
+        final remote = await fetchRemote();
+
         await hive.box.clear();
-        for (var contenido in contenidos) {
-          await hive.addData<Contenido>(contenido);
+        for (var item in remote) {
+          await hive.addData(item);
         }
-        return contenidos;
+
+        return remote;
       }
 
-      print("No hay conexión ni datos locales.");
       return [];
-    } catch (e) {
-      print("Error al cargar contenidos: $e");
+    } catch (e, stack) {
+      debugPrint("Error en cargarDatos($boxName): $e\n$stack");
       return [];
     } finally {
       hive.dispose();
     }
   }
 
-  Future<List<Departamento>> cargarDepartamentos() async {
-    final hive = DBHive();
-    try {
-      await hive.initDB('departamentos');
-      final hasInternet = await verificarConexionInternet();
-      if (hasInternet) {
-        final departamentos = await rtDep.traerDepa();
-        await hive.box.clear();
-        for (var departamento in departamentos) {
-          await hive.addData<Departamento>(departamento);
-        }
-        return departamentos;
-      } else {
-        final localData = hive.readData();
-        if (localData.isNotEmpty) {
-          return localData.values.cast<Departamento>().toList();
-        }
-        return [];
-      }
-    } catch (e) {
-      print("Error al cargar departamentos: $e");
-      return [];
-    }
+  /* -------------------------------------------------------------
+  *  MÉTODOS DE CARGA (BÁSICOS)
+  * ----------------------------------------------------------- */
+
+  Future<List<Contenido>> cargarContenidos({void Function(List<Contenido>)? onUpdate}) {
+    return cargarDatos<Contenido>('contenidos', rtCont.listaContenido, onUpdate: onUpdate);
   }
 
-  Future<List<Pantalla>> cargarPantallas() async {
-    try {
-      final hive = DBHive();
-      await hive.initDB('pantallas');
-      final hasInternet = await verificarConexionInternet();
-      if (hasInternet) {
-        final pantallas = await rtPant.traerPantalla();
-        await hive.box.clear();
-        for (var pantalla in pantallas) {
-          await hive.addData<Pantalla>(pantalla);
-        }
-        return pantallas;
-      } else {
-        final localData = hive.readData();
-        if (localData.isNotEmpty) {
-          return localData.values.cast<Pantalla>().toList();
-        }
-        return [];
-      }
-    } catch (e) {
-      print("Error al cargar pantallas: $e");
-      return [];
-    }
+  Future<List<Departamento>> cargarDepartamentos() {
+    return cargarDatos<Departamento>('departamentos', rtDep.traerDepa);
   }
 
-  //Pantalla login
+  Future<List<Pantalla>> cargarPantallas() {
+    return cargarDatos<Pantalla>('pantallas', rtPant.traerPantalla);
+  }
 
   Future<List<Usuario>> cargarUsuarios() async {
     try {
-      List<Usuario> usuarios = await rtUsu.leerUsuario();
-      return usuarios;
+      return await rtUsu.leerUsuario();
     } catch (e) {
-      print("Error al cargar usuarios: $e");
+      debugPrint("Error al cargar usuarios: $e");
       return [];
     }
   }
 
-  //Controladores del Crud
+  Future<List<Archivo>> cargarArchivos() async {
+    try {
+      return await rtArchivo.listaArchivo();
+    } catch (e) {
+      debugPrint("Error al cargar archivos: $e");
+      return [];
+    }
+  }
+  /* -------------------------------------------------------------
+  *  CRUD - CONTENIDOS
+  * ----------------------------------------------------------- */
 
   Future<String> guardarContenido(
     String titulo,
@@ -147,28 +153,24 @@ class Controladora {
     String departamento,
   ) async {
     try {
-      if (titulo.isEmpty ||
-          descripcion.isEmpty ||
-          pantalla.isEmpty ||
-          departamento.isEmpty) {
-        print("Contenido vacío, no se guardará.");
-        return "Contenido vacío";
+      if (titulo.isEmpty || descripcion.isEmpty || pantalla.isEmpty || departamento.isEmpty) {
+        return "Campos incompletos";
       }
 
-      List<Pantalla> pantallas = await cargarPantallas();
-      List<Departamento> departamentos = await cargarDepartamentos();
+      final pantallas = await cargarPantallas();
+      final departamentos = await cargarDepartamentos();
 
-      Pantalla pantallaObj = pantallas.firstWhere(
+      final pantallaObj = pantallas.firstWhere(
         (p) => p.nombrePantalla == pantalla,
         orElse: () => Pantalla.defaultPantalla(),
       );
 
-      Departamento departamentoObj = departamentos.firstWhere(
+      final departamentoObj = departamentos.firstWhere(
         (d) => d.nombreDepartamento == departamento,
         orElse: () => Departamento.defaultDepartamento(),
       );
 
-      Contenido contenido = Contenido(
+      final contenido = Contenido(
         0,
         titulo,
         subtitulo,
@@ -180,7 +182,7 @@ class Controladora {
       await rtCont.guardarContenido(contenido);
       return "Contenido guardado";
     } catch (e) {
-      print("Error al guardar contenido: $e");
+      debugPrint("Error al guardar contenido: $e");
       return "Error al guardar contenido";
     }
   }
@@ -190,29 +192,28 @@ class Controladora {
     String titulo,
     String subtitulo,
     String descripcion,
-    String pantallaSeleccionada,
-    String departamentoSeleccionado,
+    String pantalla,
+    String departamento,
   ) async {
     try {
       if (titulo.isEmpty || descripcion.isEmpty) {
-        print("Contenido vacío, no se actualizará.");
-        return "Contenido vacío";
+        return "Campos incompletos";
       }
 
-      List<Pantalla> pantallas = await cargarPantallas();
-      List<Departamento> departamentos = await cargarDepartamentos();
+      final pantallas = await cargarPantallas();
+      final departamentos = await cargarDepartamentos();
 
-      Pantalla pantallaObj = pantallas.firstWhere(
-        (p) => p.nombrePantalla == pantallaSeleccionada,
+      final pantallaObj = pantallas.firstWhere(
+        (p) => p.nombrePantalla == pantalla,
         orElse: () => Pantalla.defaultPantalla(),
       );
 
-      Departamento departamentoObj = departamentos.firstWhere(
-        (d) => d.nombreDepartamento == departamentoSeleccionado,
+      final departamentoObj = departamentos.firstWhere(
+        (d) => d.nombreDepartamento == departamento,
         orElse: () => Departamento.defaultDepartamento(),
       );
 
-      Contenido contenido = Contenido(
+      final contenido = Contenido(
         idContenido,
         titulo,
         subtitulo,
@@ -224,116 +225,203 @@ class Controladora {
       await rtCont.actualizarContenido(contenido);
       return "Contenido actualizado";
     } catch (e) {
-      print("Error al actualizar contenido: $e");
+      debugPrint("Error al actualizar contenido: $e");
       return "Error al actualizar contenido";
     }
   }
 
   Future<String> eliminarContenido(int idContenido) async {
+    if (idContenido <= 0) return "ID inválido";
+
     final hive = DBHive();
     await hive.initDB('contenidos');
+
     try {
-      if (idContenido <= 0) {
-        return 'ID de contenido inválido';
+      
+      final result = await rtCont.eliminarContenido(idContenido);
+
+      if(result){
+      final local = hive.readData().values.cast<Contenido>().toList();
+      final contenido = local.firstWhere(
+        (c) => c.idContenido == idContenido,
+        orElse: () => Contenido.defaultContenido(),
+      );
+
+      if (contenido.idContenido != -1) {
+        await hive.deleteData(contenido.idContenido);
       }
-      final localData = hive.readData();
-      final contenidos = localData.values.cast<Contenido>().toList();
-      if (contenidos.isNotEmpty) {
-        final contenido = contenidos.firstWhere(
-          (c) => c.idContenido == idContenido,
-          orElse: () => Contenido.defaultContenido(),
-        );
-        if (contenido != Contenido.defaultContenido()) {
-          await hive.deleteData(contenido.idContenido);
-        }
+      return "Contenido eliminado";
+      } else {
+        return "Error al eliminar contenido";
       }
-      await rtCont.eliminarContenido(idContenido);
-      print("Contenido con ID $idContenido eliminado");
-      return 'Contenido Eliminado';
+      
     } catch (e) {
-      print("Error al eliminar contenido: $e");
-      return 'Error al eliminar contenido';
+      debugPrint("Error al eliminar contenido: $e");
+      return "Error al eliminar contenido";
+    } finally {
+      hive.dispose();
     }
   }
 
-  //Funciones generales
-  Future<bool> verificarConexionInternet() async {
+  /* -------------------------------------------------------------
+  *  FILTRO POR DEPARTAMENTO
+  * ----------------------------------------------------------- */
+  Future<List<Contenido>> cargarContenidosPorDepartamento(int idDepartamento) async {
+  final hive = DBHive();
+  await hive.initDB('contenidos');
+
+  try {
+    final hayInternet = await verificarConexionInternet();
+    
+    if (hayInternet) {
+      // 1. Traer datos frescos del servidor
+      final remotos = await rtCont.cargarContenidosPorDepartamento(idDepartamento);
+      
+      if (remotos.isNotEmpty) {
+        // 2. ACTUALIZAR HIVE: Solo borramos y guardamos si recibimos algo del servidor
+        // Para no borrar TODO lo de otras pantallas, podrías filtrar o usar putAll
+        for (var item in remotos) {
+          await hive.addData(item); 
+        }
+      }
+      return remotos;
+    }
+  } catch (e) {
+    debugPrint("Error remoto, intentando local... $e");
+  } finally {
+    // Importante: No cierres la box aquí si la vas a usar abajo, 
+    // o asegúrate de que cargarHive la abra de nuevo.
+    hive.dispose();
+  }
+
+  // 3. FALLBACK: Si no hay internet o falló la red, leemos de Hive
+  final locales = await cargarHive<Contenido>('contenidos');
+  return locales.where((c) => c.departamento.idDepartamento == idDepartamento).toList();
+}
+
+/* -------------------------------------------------------------
+  *  CRUD de ENLACES
+  * ----------------------------------------------------------- */
+
+Future<String> crearEnlace(String departamentoSeleccionado, String titulo, String url) async {
     try {
-      final result = await InternetAddress.lookup('google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (_) {
+    if (titulo.isEmpty || url.isEmpty) {
+      return "Por favor, llena todos los campos";
+    }
+
+    if (!url.startsWith('http')) {
+      url = 'https://$url';
+    }
+
+    final departamentos = await cargarDepartamentos();
+    final departamentoObj = departamentos.firstWhere(
+      (d) => d.nombreDepartamento == departamentoSeleccionado,
+      orElse: () => Departamento.defaultDepartamento(),
+    );
+    
+    Archivo nuevoArchivo = Archivo.defaultArchivo();
+    nuevoArchivo.tituloArchivo = titulo;
+    nuevoArchivo.urlArchivo = url;
+    nuevoArchivo.departamentoArchivo = departamentoObj;
+    
+    await rtArchivo.crearArchivo(nuevoArchivo);
+    return "Enlace guardado";
+    } catch (e) {
+      debugPrint("Error al crear enlace: $e");
+      return "Error al guardar enlace";
+    }
+    
+  }
+
+Future<String> eliminarEnlace(int idEnlace) async {
+   try{
+      final result = await rtArchivo.eliminarArchivo(idEnlace);
+      if(result){
+        return "Enlace eliminado";
+      } else {
+        return "Error al eliminar enlace";
+      }
+   }catch(e){
+     debugPrint("Error al eliminar enlace: $e");
+     return "Error al eliminar enlace";
+   } 
+  }
+
+Future<String> actualizarEnlace(int idEnlace, String titulo, String url) async {
+    try {
+
+      if (titulo.isEmpty || url.isEmpty) {
+        return "Por favor, llena todos los campos";
+      }
+
+      if (!url.startsWith('http')) {
+        url = 'https://$url';
+      }
+
+      final archivoActualizado = Archivo(
+        idEnlace,
+        titulo,
+        url,
+        Departamento.defaultDepartamento(), // Aquí podrías querer mantener el mismo departamento
+      );
+      await rtArchivo.actualizarArchivo(archivoActualizado);
+      return "Enlace actualizado";
+    } catch (e) {
+      debugPrint("Error al actualizar enlace: $e");
+      return "Error al actualizar enlace";
+    }
+}
+
+
+  /* -------------------------------------------------------------
+  *  UTILIDADES
+  * ----------------------------------------------------------- */
+
+  Future<bool> verificarConexionInternet() async {
+  try {
+    // 1. Verificación rápida de la interfaz (Wi-Fi/Datos)
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
       return false;
     }
+
+    // 2. "Ping" real a Google (resolución de DNS)
+    // Usamos un timeout para que la app no se quede colgada si el internet es muy lento
+    final result = await InternetAddress.lookup('google.com')
+        .timeout(const Duration(seconds: 3));
+
+    return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+  } on SocketException catch (_) {
+    // Si hay un error de socket, es que no hay salida a internet
+    return false;
+  } on TimeoutException catch (_) {
+    // Si tarda demasiado, mejor tratarlo como offline
+    return false;
+  } catch (e) {
+    debugPrint("Error verificando conexión: $e");
+    return false;
   }
+}
 
   Future<void> mostrarMensaje(
     String mensaje,
     BuildContext context,
-    String uso,
+    String tipo,
   ) async {
-    final error = Colors.red[700];
-    final success = Colors.green[700];
-    final info = Colors.blue[700];
-
-    switch (uso) {
-      case 'error':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(mensaje),
-            backgroundColor: error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        break;
-      case 'success':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(mensaje),
-            backgroundColor: success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        break;
-      case 'info':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(mensaje),
-            backgroundColor: info,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        break;
+    final colores = {
+      'error': Colors.red[700],
+      'success': Colors.green[700],
+      'info': Colors.blue[700],
     };
 
-    // Mostrar un SnackBar con el mensaje
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: colores[tipo] ?? Colors.black87,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
-  Future<List<Contenido>> cargarContenidosPorDepartamento(
-    int idDepartamento,
-  ) async {
-    try {
-      final hasInternet = await verificarConexionInternet();
-      if (!hasInternet) {
-        print("Sin conexión a internet");
-        return [];
-      }
-
-      final contenidos = await rtCont.cargarContenidosPorDepartamento(
-        idDepartamento,
-      );
-      if (contenidos.isEmpty) {
-        print(
-          "No se encontraron contenidos para el departamento: $idDepartamento",
-        );
-      }
-
-      return contenidos;
-    } catch (e) {
-      print("Error al cargar contenidos por departamento: $e");
-      return [];
-    }
-  }
+  
 }

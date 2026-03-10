@@ -30,12 +30,12 @@ class Contenido {
 
   Object? toJson() {
     return {
-      'id_contenido': idContenido,
-      'titulo_contenido': tituloContenido,
-      'subtitulo_contenido': subtituloContenido,
-      'descripcion_contenido': descripcionContenido,
-      'id_pantalla': pantalla.idPantalla,
-      'id_departamento': departamento.idDepartamento,
+      'id_Contenido': idContenido,
+      'titulo_Contenido': tituloContenido,
+      'subtitulo_Contenido': subtituloContenido,
+      'descripcion_Contenido': descripcionContenido,
+      'id_Pantalla': pantalla.idPantalla,
+      'id_Departamento': departamento.idDepartamento,
     };
   }
 

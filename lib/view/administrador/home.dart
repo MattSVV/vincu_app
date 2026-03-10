@@ -23,12 +23,16 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:vincu_app/controller/controladora.dart';
+import 'package:vincu_app/model/archivo.dart';
 import 'package:vincu_app/model/contenido.dart';
-import 'package:vincu_app/view/administrador/CreateAndUpdate/eliminarContenido.dart';
+import 'package:vincu_app/view/administrador/eliminarContenido.dart';
 import 'package:vincu_app/widgets/ContenidoCard.dart';
 import 'package:vincu_app/widgets/ContenidoEditable.dart';
 import 'package:vincu_app/model/departamento.dart';
-
+import 'package:vincu_app/widgets/enlacesCard.dart';
+import 'package:vincu_app/view/administrador/CreateAndUpdateEnlaces/crearEnlace.dart';
+import 'package:vincu_app/view/administrador/CreateAndUpdateEnlaces/actualizarEnlace.dart';
+import 'package:vincu_app/widgets/EnlacesCardEdit.dart';
 
 class HomeAdmin extends StatefulWidget {
   const HomeAdmin({super.key});
@@ -39,6 +43,7 @@ class HomeAdmin extends StatefulWidget {
 
 class _HomeAdminState extends State<HomeAdmin> with TickerProviderStateMixin {
   List<Contenido> listaContenido = [];
+  List<Archivo> listaEnlaces = [];
   List<String> _tabs = [];
   List<String> _departamentos = [];
   String? _departamentoSeleccionado;
@@ -46,8 +51,8 @@ class _HomeAdminState extends State<HomeAdmin> with TickerProviderStateMixin {
   String _modoActual = 'Vista';
   final List<String> _modos = ['Vista', 'Editar'];
   bool _tabControllerInicializado = false;
+  bool _cargandoEnlaces = false;
   final control = Controladora();
-  
 
   late TabController _tabController;
 
@@ -61,6 +66,7 @@ class _HomeAdminState extends State<HomeAdmin> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     cargarContenidoGeneral();
+    cargarEnlaces();
   }
 
   void _crearTabController() {
@@ -70,9 +76,12 @@ class _HomeAdminState extends State<HomeAdmin> with TickerProviderStateMixin {
     }
     if (_tabs.isNotEmpty) {
       _tabController = TabController(length: _tabs.length, vsync: this);
+      _tabController.addListener(_handleTabSelection);
       _tabControllerInicializado = true;
     }
   }
+
+  
 
   @override
   void dispose() {
@@ -82,72 +91,93 @@ class _HomeAdminState extends State<HomeAdmin> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> cargarContenidoGeneral({bool soloDepartamento = false}) async {
-  setState(() => _cargando = true);
-
+  Future<void> cargarEnlaces() async {
   try {
-    // Cargar departamentos y pantallas
-    final departamentos = await control.cargarDepartamentos();
-    final pantallas = await control.cargarPantallas();
-
-    // Establecer departamentos únicos
-    final departamentosUnicos = departamentos
-        .map((d) => d.nombreDepartamento)
-        .toSet()
-        .toList();
-
-    _departamentoSeleccionado ??=
-        departamentosUnicos.isNotEmpty ? departamentosUnicos.first : null;
-
-    // Obtener ID del departamento seleccionado
-    final departamentoSeleccionado = departamentos.firstWhere(
-      (d) => d.nombreDepartamento == _departamentoSeleccionado,
-      orElse: () => Departamento.defaultDepartamento(),
-    );
-
-    // Obtener contenidos
-    List<Contenido> contenidos;
-
-    if (soloDepartamento) {
-      contenidos = await control
-          .cargarContenidosPorDepartamento(departamentoSeleccionado.idDepartamento);
-    } else {
-      contenidos = await control.cargarContenidos(
-        onUpdate: (nuevosDatos) {
-          setState(() {
-            listaContenido = nuevosDatos;
-          });
-        },
-      );
-    }
-
-    // Obtener pantallas únicas
-    final pantallasUnicas = pantallas
-        .map((p) => p.nombrePantalla)
-        .toSet()
-        .toList();
-
-    // Actualizar estado
+    setState(() => _cargandoEnlaces = true); // 1. Empieza la carga
+    final enlaces = await control.cargarArchivos();
     setState(() {
-      listaContenido = contenidos;
-      _tabs = [...pantallasUnicas, 'Cronograma'];
-      _departamentos = departamentosUnicos;
-      _cargando = false;
+      listaEnlaces = enlaces;
+      _cargandoEnlaces = false; // 2. Termina la carga
     });
-    _crearTabController();
   } catch (e) {
-    print("Error al cargar contenido: $e");
-    setState(() => _cargando = false);
+    setState(() => _cargandoEnlaces = false); // 3. Termina en caso de error
   }
 }
 
-void _cambiarDepartamento(String nuevoDepartamento) async {
-  setState(() {
-    _departamentoSeleccionado = nuevoDepartamento;
-  });
-  Navigator.pop(context); // cerrar drawer
-  await cargarContenidoGeneral(soloDepartamento: true);
+void _handleTabSelection() {
+  // Verificamos que el controlador esté listo y que la transición haya terminado
+  if (_tabControllerInicializado && !_tabController.indexIsChanging) {
+    String nombreTabActual = _tabs[_tabController.index];
+    
+    if (nombreTabActual == 'Enlaces') {
+      cargarEnlaces();
+    }
+  }
 }
+
+  Future<void> cargarContenidoGeneral({bool soloDepartamento = false}) async {
+    setState(() => _cargando = true);
+
+    try {
+      // Cargar departamentos y pantallas
+      final departamentos = await control.cargarDepartamentos();
+      final pantallas = await control.cargarPantallas();
+
+      // Establecer departamentos únicos
+      final departamentosUnicos =
+          departamentos.map((d) => d.nombreDepartamento).toSet().toList();
+
+      _departamentoSeleccionado ??=
+          departamentosUnicos.isNotEmpty ? departamentosUnicos.first : null;
+
+      // Obtener ID del departamento seleccionado
+      final departamentoSeleccionado = departamentos.firstWhere(
+        (d) => d.nombreDepartamento == _departamentoSeleccionado,
+        orElse: () => Departamento.defaultDepartamento(),
+      );
+
+      // Obtener contenidos
+      List<Contenido> contenidos;
+
+      if (soloDepartamento) {
+        contenidos = await control.cargarContenidosPorDepartamento(
+          departamentoSeleccionado.idDepartamento,
+        );
+      } else {
+        contenidos = await control.cargarContenidos(
+          onUpdate: (nuevosDatos) {
+            setState(() {
+              listaContenido = nuevosDatos;
+            });
+          },
+        );
+      }
+
+      // Obtener pantallas únicas
+      final pantallasUnicas =
+          pantallas.map((p) => p.nombrePantalla).toSet().toList();
+
+      // Actualizar estado
+      setState(() {
+        listaContenido = contenidos;
+        _tabs = [...pantallasUnicas, 'Enlaces', 'Cronograma'];
+        _departamentos = departamentosUnicos;
+        _cargando = false;
+      });
+      _crearTabController();
+    } catch (e) {
+      print("Error al cargar contenido: $e");
+      setState(() => _cargando = false);
+    }
+  }
+
+  void _cambiarDepartamento(String nuevoDepartamento) async {
+    setState(() {
+      _departamentoSeleccionado = nuevoDepartamento;
+    });
+    Navigator.pop(context); // cerrar drawer
+    await cargarContenidoGeneral(soloDepartamento: true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,17 +221,17 @@ void _cambiarDepartamento(String nuevoDepartamento) async {
             (_cargando || !_tabControllerInicializado)
                 ? null
                 : TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    indicatorColor: amarillo,
-                    labelColor: amarillo,
-                    unselectedLabelColor: Colors.white70,
-                    labelStyle: TextStyle(
-                      fontFamily: fuenteTitulo,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+                  controller: _tabController,
+                  isScrollable: true,
+                  indicatorColor: amarillo,
+                  labelColor: amarillo,
+                  unselectedLabelColor: Colors.white70,
+                  labelStyle: TextStyle(
+                    fontFamily: fuenteTitulo,
+                    fontWeight: FontWeight.bold,
                   ),
+                  tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+                ),
       ),
       drawer: Drawer(
         backgroundColor: morado,
@@ -240,30 +270,36 @@ void _cambiarDepartamento(String nuevoDepartamento) async {
           ],
         ),
       ),
-      body: (_cargando || !_tabControllerInicializado)
-          ? Center(child: CircularProgressIndicator(color: morado))
-          : TabBarView(
-              controller: _tabController,
-              children: _tabs.map((pantalla) {
-                return _buildTabContent(pantalla, _modoActual);
-              }).toList(),
-            ),
+      body:
+          (_cargando || !_tabControllerInicializado)
+              ? Center(child: CircularProgressIndicator(color: morado))
+              : TabBarView(
+                controller: _tabController,
+                children:
+                    _tabs.map((pantalla) {
+                      return _buildTabContent(pantalla, _modoActual);
+                    }).toList(),
+              ),
     );
   }
 
   Widget _buildTabContent(String pantallaSeleccionada, String modoActual) {
     if (pantallaSeleccionada == 'Cronograma') {
-      return Center(
-        child: Text(
-          'Aquí va el cronograma',
-          style: TextStyle(
-            fontFamily: fuenteTitulo,
-            fontSize: 22,
-            color: morado,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
+      return _buildCronograma();
+    }
+
+    if (pantallaSeleccionada == 'Enlaces') {
+      // Filtramos los enlaces por el departamento seleccionado actualmente
+      final enlacesFiltrados =
+          listaEnlaces
+              .where(
+                (archivo) =>
+                    archivo.departamentoArchivo.nombreDepartamento ==
+                    _departamentoSeleccionado,
+              )
+              .toList();
+      
+      return _buildEnlacesView(enlacesFiltrados);
     }
 
     final contenidosFiltrados = _filtrarContenidos(pantallaSeleccionada);
@@ -317,7 +353,7 @@ void _cambiarDepartamento(String nuevoDepartamento) async {
           padding: const EdgeInsets.all(8.0),
           child: ElevatedButton.icon(
             onPressed: () async {
-              final result = await Navigator.pushNamed(
+              await Navigator.pushNamed(
                 context,
                 '/crearContenido',
                 arguments: {
@@ -325,13 +361,10 @@ void _cambiarDepartamento(String nuevoDepartamento) async {
                   'departamento': _departamentoSeleccionado,
                 },
               );
-              if (result == true) {
-                await control.mostrarMensaje("Contenido creado correctamente", context, 'success');
-                await cargarContenidoGeneral(soloDepartamento: true);
-              }
+              await cargarContenidoGeneral(soloDepartamento: true);
             },
-            icon: Icon(Icons.add),
-            label: Text("Agregar", style: TextStyle(color: amarillo)),
+            icon: Icon(Icons.add, color: amarillo),
+            label: Text("Agregar", style: TextStyle(color: grisClaro)),
             style: ElevatedButton.styleFrom(backgroundColor: morado),
           ),
         ),
@@ -357,7 +390,7 @@ void _cambiarDepartamento(String nuevoDepartamento) async {
                 return ContenidoEditable(
                   contenido: contenido,
                   onEditar: () async {
-                    final result = await Navigator.pushNamed(
+                    await Navigator.pushNamed(
                       context,
                       '/actualizarContenido',
                       arguments: {
@@ -370,39 +403,178 @@ void _cambiarDepartamento(String nuevoDepartamento) async {
                             contenido.departamento.nombreDepartamento,
                       },
                     );
+                    await cargarContenidoGeneral(soloDepartamento: true);
+                  },
+                  onEliminar: () async {
+                    final result = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        fullscreenDialog: true,
+                        builder:
+                            (context) => AdvertenciaEliminar(
+                              onAceptar: (ctx) async {
+                                String respuesta = await control
+                                    .eliminarContenido(contenido.idContenido);
+                                if (!ctx.mounted) return;
+                                if (respuesta == 'Contenido eliminado') {
+                                  Navigator.of(ctx).pop(true);
+                                } else {
+                                  Navigator.of(ctx).pop(false);
+                                }
+                              },
+                            ),
+                      ),
+                    );
+
                     if (result == true) {
-                      await control.mostrarMensaje("Contenido actualizado correctamente", context, 'success');
+                      await control.mostrarMensaje(
+                        "Contenido eliminado correctamente",
+                        context,
+                        'success',
+                      );
                       await cargarContenidoGeneral(soloDepartamento: true);
                     }
                   },
-                  onEliminar: () async {
-  final result = await Navigator.of(context).push(
-    MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (context) => AdvertenciaEliminar(
-        onAceptar: (ctx) async {
-          String respuesta = await control.eliminarContenido(contenido.idContenido);
-          if (!ctx.mounted) return;
-          if (respuesta == 'Contenido Eliminado') {
-            Navigator.of(ctx).pop(true);
-          } else {
-            Navigator.of(ctx).pop(false);
-          }
-        },
-      ),
-    ),
-  );
-
-  if (result == true) {
-    await control.mostrarMensaje("Contenido eliminado correctamente", context, 'success');
-    await cargarContenidoGeneral(soloDepartamento: true);
-  }
-},
                 );
               },
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildEnlacesView(List<Archivo> enlacesFiltrados) {
+    return Column(
+      children: [
+        
+        if (_cargandoEnlaces)
+        LinearProgressIndicator(
+          color: amarillo,
+          backgroundColor: morado.withAlpha(50),
+        ),
+
+        if (_modoActual == 'Editar')
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                 await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => CrearEnlace(
+                          departamentoSeleccionado: _departamentoSeleccionado!,
+                        ),
+                  ),
+                );
+                
+                  cargarEnlaces();
+                
+              },
+              icon: Icon(Icons.add_link, color: amarillo),
+              label: Text(
+                "Agregar Nuevo Enlace",
+                style: TextStyle(color: grisClaro),
+              ),
+              style: ElevatedButton.styleFrom(backgroundColor: morado),
+            ),
+          ),
+
+        Expanded(
+          child:
+              enlacesFiltrados.isEmpty
+                  ? const Center(
+                    child: Text('No hay enlaces para este departamento.'),
+                  )
+                  : RefreshIndicator(
+                    onRefresh: cargarEnlaces,
+                    color: morado,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: enlacesFiltrados.length,
+                      itemBuilder: (context, index) {
+                        final enlace = enlacesFiltrados[index];
+
+                        if (_modoActual == 'Editar') {
+                          return EnlacesCardEdit(
+                            archivo: enlace,
+
+                            // 🔵 EDITAR
+                            onEditar: () async {
+                              final resultado = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => ActualizarEnlace(
+                                        idEnlace: enlace.idArchivo,
+                                        tituloActual: enlace.tituloArchivo,
+                                        urlActual: enlace.urlArchivo,
+                                      ),
+                                ),
+                              );
+
+                              if (resultado == true) {
+                                await cargarEnlaces();
+                              }
+                            },
+
+                            // 🔴 ELIMINAR
+                            onEliminar: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  fullscreenDialog: true,
+                                  builder:
+                                      (context) => AdvertenciaEliminar(
+                                        onAceptar: (ctx) async {
+                                          String respuesta = await control
+                                              .eliminarEnlace(enlace.idArchivo);
+
+                                          if (!ctx.mounted) return;
+
+                                          await control.mostrarMensaje(
+                                            respuesta,
+                                            context,
+                                            'success',
+                                          );
+
+                                          cargarEnlaces();
+
+                                          if (respuesta == 'Enlace eliminado') {
+                                            Navigator.of(ctx).pop(true);
+                                            
+                                          } else {
+                                            Navigator.of(ctx).pop(false);
+                                          }
+                                          
+                                          
+                                        },
+                                      ),
+                                ),
+                              );
+                            },
+                          );
+                        } else {
+                          return EnlacesCard(archivo: enlace);
+                        }
+                      },
+                    ),
+                  ),
+        ),
+      ],
+    );
+  }
+
+  // Vista para el Cronograma (opcional para limpiar el build principal)
+  Widget _buildCronograma() {
+    return Center(
+      child: Text(
+        'Aquí va el cronograma',
+        style: TextStyle(
+          fontFamily: fuenteTitulo,
+          fontSize: 22,
+          color: morado,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

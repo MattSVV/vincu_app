@@ -65,7 +65,6 @@ class RouterContenido {
     final url = Uri.parse(
       'https://api-vinculacion-0309.onrender.com/api/contenido',
     );
-    print(contenido.toJson());
     await http.post(
       url,
       headers: {
@@ -92,17 +91,17 @@ class RouterContenido {
     );
   }
 
-  Future<void> eliminarContenido(int idContenido) async {
+  Future<bool> eliminarContenido(int idContenido) async {
     final url = Uri.parse(
       'https://api-vinculacion-0309.onrender.com/api/contenido/$idContenido',
     );
-    await http.delete(
+    final result = await http.delete(
       url,
       headers: {
         'x-api-key': dotenv.env['API_KEY']!,
       },
     );
-    print("Contenido con ID $idContenido eliminado");
+    return result.statusCode == 200;
   }
 
   Future<List<Contenido>> cargarContenidosPorDepartamento(int idDepartamento) async {
