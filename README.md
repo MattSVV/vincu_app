@@ -1,58 +1,252 @@
-# vincu_app
+📱 Vincu App – Sistema de Gestión de Vinculación IUJ 🎓
 
-Este proyecto Flutter está diseñado para funcionar como una aplicación móvil que presenta contenido institucional distribuido en diferentes pantallas, departamentos y módulos. La aplicación combina conectividad remota mediante una API con persistencia local usando Hive, garantizando acceso a la información incluso sin conexión a internet.
+Vincu App es una plataforma móvil desarrollada en Flutter para la gestión, visualización y administración de contenido institucional del Instituto Universitario Japón.
 
-☁️ Conexión con Servidor en la Nube
-API Base URL: https://api-vinculacion-0309.onrender.com
+La aplicación implementa una arquitectura robusta basada en MVC, permitiendo:
 
-La aplicación consume datos desde una API REST protegida con una API Key privada que se envía mediante un header en cada solicitud.
+📖 Consulta pública de información institucional
 
-La base de datos en el backend es de tipo relacional (SQL).
+🛠 Administración de contenido en tiempo real
 
-🗃️ Arquitectura y Estructura del Proyecto
-📦 Modelo Vista Controlador (MVC)
-Modelos:
+🌐 Sincronización con API REST
 
-Contenido: Contiene los atributos titulo (obligatorio), subtitulo (opcional), descripcion (obligatorio), además de las relaciones con Departamento y Pantalla.
+💾 Funcionamiento Offline-First mediante Hive
 
-Departamento: Representa uno de los tres departamentos institucionales, utilizados para agrupar información en la app.
+🚀 Características Principales
+👥 Dualidad de Perfiles
+🔹 Vista Pública
 
-Pantalla: Representa una de las tres secciones gráficas que puede tener un departamento.
+Consulta de contenidos institucionales
 
-Usuario: Modelo pendiente de implementación. Permitirá a usuarios autorizados modificar la información, mientras que el acceso público será solo de lectura.
+Visualización por departamentos y pantallas
 
+Acceso a enlaces externos
+
+Navegación optimizada y responsive
+
+🔹 Panel Administrativo
+
+CRUD de contenidos
+
+CRUD de enlaces (archivos externos)
+
+Interfaz protegida
+
+Sincronización inmediata con backend
+
+🌐 Sincronización Inteligente
+
+Consumo de API REST
+
+Persistencia local con Hive
+
+Modo Offline-First
+
+Recuperación automática de datos cuando no hay conexión
+
+🔗 Gestión de Enlaces Externos
+
+Módulo especializado para:
+
+Centralizar documentos
+
+Gestionar repositorios
+
+Acceso rápido a herramientas web
+
+Abrir enlaces mediante url_launcher
+
+🎨 Identidad Institucional
+
+Colores oficiales
+
+Iconografía personalizada
+
+Splash Screen institucional
+
+Tipografía coherente con la marca
+
+🏗 Arquitectura del Proyecto
+📦 Patrón de Diseño: MVC (Modelo – Vista – Controlador)
+
+La lógica de negocio está desacoplada de la interfaz para facilitar mantenimiento y escalabilidad.
+
+Componente	Descripción
+Modelos	Contenido, Archivo (Enlaces), Departamento, Pantalla, Usuario
+Vistas	Widgets para visualización pública y administración
+Controlador	Controladora.dart gestiona lógica de red, validaciones y caché
+Router	Clases por entidad para peticiones HTTP al backend
+🗃 Stack Tecnológico
+📱 Frontend
+
+Flutter (Dart)
+
+💾 Persistencia Local
+
+Hive (NoSQL local)
+
+🌐 Backend
+
+Node.js
+
+PostgreSQL
+
+Hosting en Render
+
+🔐 Seguridad
+
+API Key mediante headers
+
+Variables protegidas con flutter_dotenv
+
+☁️ API & Conectividad
+🔗 Base URL
+https://api-vinculacion-0309.onrender.com
+🔐 Seguridad
+
+Header obligatorio: api-key
+
+Sistema de filtrado de tokens para sesiones administrativas
+
+Acceso público solo lectura
+
+Acceso administrativo autenticado
+
+📁 Estructura del Proyecto
+lib/
+│
+├── model/
+│   ├── contenido.dart
+│   ├── archivo.dart
+│   ├── departamento.dart
+│   └── pantalla.dart
+│
+├── view/
+│   ├── administrador/
+│   └── usuario/
+│
+├── controller/
+│   └── controladora.dart
+│
+├── router/
+│
+├── widgets/
+│
+├── hive/
+│
+└── main.dart
+🧠 Controlador
+
+La clase Controladora es el núcleo lógico del sistema:
+
+Verifica conexión a internet
+
+Consume la API remota
+
+Guarda datos en Hive
+
+Recupera datos en modo offline
+
+Maneja mensajes de éxito y error
+
+Orquesta interacción entre vistas y modelos
+
+📁 Modelos Principales
+📌 Contenido
+
+Gestiona la información textual:
+
+titulo
+
+subtitulo
+
+descripcion
+
+idDepartamento
+
+idPantalla
+
+📌 Archivo (Enlaces)
+
+Centraliza documentación externa:
+
+nombreArchivo
+
+urlArchivo
+
+departamentoArchivo
+
+📌 Usuario (En desarrollo)
+
+Permitirá:
+
+Control de roles (Admin / Editor)
+
+Gestión avanzada de permisos
+
+Auditoría de cambios
 
 💾 Persistencia Local (Hive)
-Se utiliza la base de datos Hive para persistencia de datos localmente.
 
-Hive se inicializa en el directorio de soporte de la aplicación y se crean boxes específicas como contenidos para almacenar los datos.
+La aplicación utiliza Hive para:
 
-Esto permite que la aplicación funcione sin conexión a internet, utilizando los datos almacenados localmente.
+Guardar contenidos cuando hay conexión
 
-🧠 Controlador
-El archivo controller contiene la clase Controladora, encargada de:
+Mostrar datos sin conexión
 
-Verificar la conexión a internet.
+Reducir consumo de red
 
-Cargar los contenidos desde la API si hay conexión.
+Mejorar tiempos de carga
 
-Guardar los contenidos localmente con Hive.
+Inicialización en directorio de soporte del sistema.
 
-Recuperar los datos desde Hive si no hay conexión.
+🛠 Instalación y Configuración
+1️⃣ Clonar el repositorio
+git clone https://github.com/tu-usuario/vincu_app.git
+2️⃣ Configurar variables de entorno
 
-🌐 Router
-El directorio router contiene las clases encargadas de hacer las solicitudes HTTP a la API para cada modelo (Contenido, Departamento, Pantalla, etc.).
+Crear archivo .env en la raíz del proyecto:
 
-Cada router incluye la lógica para parsear respuestas y mapear datos a sus respectivos modelos.
+API_URL=https://api-vinculacion-0309.onrender.com
+API_KEY=tu_clave_privada
+3️⃣ Instalar dependencias
+flutter pub get
+4️⃣ Generar adaptadores Hive
+dart run build_runner build
+5️⃣ Ejecutar la aplicación
+flutter run
+🚧 Estado del Proyecto
 
-🔐 Acceso y Seguridad
-La aplicación requiere una API Key para acceder a los endpoints protegidos.
+ Arquitectura base MVC
 
-El login es opcional, ya que el acceso a la información es libre para todos los usuarios.
+ Integración Hive (Offline Mode)
 
-El inicio de sesión será habilitado solo para los usuarios con privilegios de edición o administración.
+ CRUD Contenidos
 
-🚧 Notas y Consideraciones
-⚠️ La aplicación está en desarrollo activo y puede cambiar la estructura de los modelos según se vayan definiendo nuevas funcionalidades y requerimientos.
+ CRUD Enlaces
 
-Se recomienda mantener una buena documentación de cada modelo y ruta para facilitar futuras integraciones.
+ Identidad visual institucional
+
+ Implementación completa de roles (Admin / Editor)
+
+ Módulo de Cronograma dinámico
+
+ Optimización de caché inteligente
+
+🎯 Objetivo del Proyecto
+
+Desarrollar una solución móvil institucional:
+
+Escalable
+
+Offline-First
+
+Segura
+
+Fácil de mantener
+
+Lista para crecimiento modular
+
+👨‍💻 Desarrollo
+
+Proyecto desarrollado para el Instituto Universitario Japón.
